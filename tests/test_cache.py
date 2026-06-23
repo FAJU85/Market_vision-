@@ -48,6 +48,7 @@ def test_training_cycle_populates_cache(trained_db):
             conn,
             today=date(2024, 1, 4),  # sweep day -> swing trained too
             day_model_path=trained_db.parent / "day.txt",
+            day_low_model_path=trained_db.parent / "day_low.txt",
             swing_model_path=trained_db.parent / "swing.txt",
         )
         assert summary["trained_day"] is True
@@ -64,6 +65,7 @@ def test_ui_reads_cached_bounds(trained_db):
             conn,
             today=date(2024, 1, 4),
             day_model_path=trained_db.parent / "day.txt",
+            day_low_model_path=trained_db.parent / "day_low.txt",
             swing_model_path=trained_db.parent / "swing.txt",
         )
     with db.read_only(trained_db) as conn:
@@ -77,6 +79,7 @@ def test_cache_predictions_noop_without_models(trained_db):
         written = cache_predictions(
             conn,
             day_model_path=trained_db.parent / "absent_day.txt",
+            day_low_model_path=trained_db.parent / "absent_day_low.txt",
             swing_model_path=trained_db.parent / "absent_swing.txt",
         )
     assert written == 0

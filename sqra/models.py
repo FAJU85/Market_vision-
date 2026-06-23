@@ -56,20 +56,24 @@ INCREMENTAL_LEARNING_RATE = 1e-5
 def train_day_model(
     features: pd.DataFrame,
     *,
+    target: str = "next_high",
     num_boost_round: int = 100,
     model_path: Path | str | None = None,
     init_model: lgb.Booster | Path | str | None = None,
     learning_rate: float | None = None,
 ) -> lgb.Booster:
-    """Train Core A (next-day high bound) and serialize it.
+    """Train a Core A day bound regressor and serialize it.
 
-    When ``init_model`` is supplied, boosting continues from that model — the
-    nightly incremental fine-tune — typically with a restricted
-    ``learning_rate`` (default ``1e-5`` in that mode).
+    ``target`` selects the bound: ``"next_high"`` (upper, default) or
+    ``"next_low"`` (lower). When ``init_model`` is supplied, boosting continues
+    from that model — the nightly incremental fine-tune — typically with a
+    restricted ``learning_rate`` (default ``1e-5`` in that mode).
     """
+    if target not in ("next_high", "next_low"):
+        raise ValueError(f"Unsupported day-model target: {target!r}")
     train_df, _ = _split(features)
     weight = train_df["sample_weight"] if "sample_weight" in train_df else None
-    dataset = lgb.Dataset(train_df[FEATURE_COLUMNS], label=train_df["next_high"], weight=weight)
+    dataset = lgb.Dataset(train_df[FEATURE_COLUMNS], label=train_df[target], weight=weight)
 
     params = dict(_DAY_PARAMS)
     if learning_rate is not None:
@@ -79,7 +83,8 @@ def train_day_model(
 
     init = load_model(init_model) if isinstance(init_model, (str, Path)) else init_model
     booster = lgb.train(params, dataset, num_boost_round=num_boost_round, init_model=init)
-    path = Path(model_path) if model_path is not None else config.DAY_MODEL_PATH
+    default_path = config.DAY_MODEL_PATH if target == "next_high" else config.DAY_LOW_MODEL_PATH
+    path = Path(model_path) if model_path is not None else default_path
     path.parent.mkdir(parents=True, exist_ok=True)
     booster.save_model(str(path))
     return booster
