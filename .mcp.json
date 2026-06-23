@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "agileforagents": {
+      "command": "agileforagents",
+      "args": [],
+      "env": {}
+    },
+    "ai-rule-learning": {
+      "command": "ai-rule-learning-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}
