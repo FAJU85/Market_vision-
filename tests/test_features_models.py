@@ -63,6 +63,25 @@ def test_day_model_trains_loads_and_predicts(features, tmp_path):
     assert len(preds) == len(features)
 
 
+def test_day_low_model_trains_and_predicts_below_high(features, tmp_path):
+    """Backlog #2: the symmetric next-low bound model trains and predicts."""
+    high_path = tmp_path / "day_model.txt"
+    low_path = tmp_path / "day_low_model.txt"
+    train_day_model(features, target="next_high", num_boost_round=30, model_path=high_path)
+    train_day_model(features, target="next_low", num_boost_round=30, model_path=low_path)
+    assert low_path.exists()
+
+    high = predict(load_model(high_path), features)
+    low = predict(load_model(low_path), features)
+    # On average the predicted high bound should sit above the low bound.
+    assert high.mean() > low.mean()
+
+
+def test_day_model_rejects_bad_target(features, tmp_path):
+    with pytest.raises(ValueError):
+        train_day_model(features, target="next_close", model_path=tmp_path / "x.txt")
+
+
 def test_swing_model_trains_loads_and_predicts(features, tmp_path):
     model_path = tmp_path / "swing_model.txt"
     train_swing_model(features, num_boost_round=20, model_path=model_path)

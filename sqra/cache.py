@@ -34,17 +34,23 @@ def should_full_sweep(day: date, sweep_weekday: int = DEFAULT_SWEEP_WEEKDAY) -> 
     return day.weekday() == sweep_weekday
 
 
-def _bounds_for(strategy_mode: str, recent: pd.DataFrame, model_path: Path) -> pd.DataFrame:
-    booster = load_model(model_path)
-    out = predict(booster, recent[FEATURE_COLUMNS])
+def _day_rows(recent: pd.DataFrame, high_path: Path, low_path: Path) -> pd.DataFrame:
+    high_pred = predict(load_model(high_path), recent[FEATURE_COLUMNS])
+    low_pred = predict(load_model(low_path), recent[FEATURE_COLUMNS])
     rows = recent[["symbol", "date", "close"]].copy()
-    if strategy_mode == DAY_MODE:
-        rows["pred_value"] = out
-        rows["pred_upper"], rows["pred_lower"] = day_bounds(out)
-    else:
-        rows["pred_value"] = out
-        rows["pred_upper"], rows["pred_lower"] = swing_bounds(recent["close"], out)
-    rows["strategy_mode"] = strategy_mode
+    rows["pred_value"] = high_pred
+    rows["pred_upper"], rows["pred_lower"] = day_bounds(high_pred, low_pred)
+    rows["strategy_mode"] = DAY_MODE
+    rows["generated_at"] = datetime.now()
+    return rows
+
+
+def _swing_rows(recent: pd.DataFrame, model_path: Path) -> pd.DataFrame:
+    prob = predict(load_model(model_path), recent[FEATURE_COLUMNS])
+    rows = recent[["symbol", "date", "close"]].copy()
+    rows["pred_value"] = prob
+    rows["pred_upper"], rows["pred_lower"] = swing_bounds(recent["close"], prob)
+    rows["strategy_mode"] = SWING_MODE
     rows["generated_at"] = datetime.now()
     return rows
 
@@ -54,6 +60,7 @@ def cache_predictions(
     *,
     lookback: int = 60,
     day_model_path: Path | str | None = None,
+    day_low_model_path: Path | str | None = None,
     swing_model_path: Path | str | None = None,
 ) -> int:
     """Compute and upsert recent predictions for every symbol/mode.
@@ -61,6 +68,7 @@ def cache_predictions(
     Returns the number of cache rows written.
     """
     day_path = Path(day_model_path) if day_model_path else config.DAY_MODEL_PATH
+    day_low_path = Path(day_low_model_path) if day_low_model_path else config.DAY_LOW_MODEL_PATH
     swing_path = Path(swing_model_path) if swing_model_path else config.SWING_MODEL_PATH
 
     features = build_features(conn, drop_targets=True)
@@ -69,10 +77,10 @@ def cache_predictions(
     recent = features.groupby("symbol", group_keys=False).tail(lookback)
 
     frames = []
-    if day_path.exists():
-        frames.append(_bounds_for(DAY_MODE, recent, day_path))
+    if day_path.exists() and day_low_path.exists():
+        frames.append(_day_rows(recent, day_path, day_low_path))
     if swing_path.exists():
-        frames.append(_bounds_for(SWING_MODE, recent, swing_path))
+        frames.append(_swing_rows(recent, swing_path))
     if not frames:
         return 0
 
@@ -96,27 +104,36 @@ def run_training_cycle(
     *,
     today: date | None = None,
     day_model_path: Path | str | None = None,
+    day_low_model_path: Path | str | None = None,
     swing_model_path: Path | str | None = None,
     sweep_weekday: int = DEFAULT_SWEEP_WEEKDAY,
 ) -> dict:
     """Run the nightly training + caching cadence. Returns a summary dict."""
     day = today or date.today()
     day_path = Path(day_model_path) if day_model_path else config.DAY_MODEL_PATH
+    day_low_path = Path(day_low_model_path) if day_low_model_path else config.DAY_LOW_MODEL_PATH
     swing_path = Path(swing_model_path) if swing_model_path else config.SWING_MODEL_PATH
 
     features = build_features(conn)
     if features.empty:
         return {"trained_day": False, "swept_swing": False, "cached_rows": 0}
 
-    # Day core: incremental fine-tune from the existing model when present.
-    init = day_path if day_path.exists() else None
-    train_day_model(features, model_path=day_path, init_model=init)
+    # Day core: incremental fine-tune of both bound models when present.
+    train_day_model(
+        features, target="next_high", model_path=day_path,
+        init_model=day_path if day_path.exists() else None,
+    )
+    train_day_model(
+        features, target="next_low", model_path=day_low_path,
+        init_model=day_low_path if day_low_path.exists() else None,
+    )
 
     swept = should_full_sweep(day, sweep_weekday)
     if swept or not swing_path.exists():
         train_swing_model_sweep(features, model_path=swing_path)
 
     cached = cache_predictions(
-        conn, day_model_path=day_path, swing_model_path=swing_path
+        conn, day_model_path=day_path, day_low_model_path=day_low_path,
+        swing_model_path=swing_path,
     )
     return {"trained_day": True, "swept_swing": swept, "cached_rows": cached}

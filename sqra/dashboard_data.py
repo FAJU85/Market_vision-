@@ -22,9 +22,10 @@ SWING_MODE = "Swing Trading Core"
 FALLBACK_BAND = 0.02
 
 
-def day_bounds(prediction):
-    """Upper/lower bounds from the day core's next-high prediction."""
-    return prediction * 1.01, prediction * 0.99
+def day_bounds(high_prediction, low_prediction):
+    """Day-core bounds: the upper is the next-high model's output, the lower the
+    next-low model's output (Core A predicts both bounds directly)."""
+    return high_prediction, low_prediction
 
 
 def swing_bounds(close, probability):
@@ -39,6 +40,7 @@ def predicted_bounds(
     *,
     lookback: int = 60,
     day_model_path: Path | str | None = None,
+    day_low_model_path: Path | str | None = None,
     swing_model_path: Path | str | None = None,
 ) -> pd.DataFrame:
     """Return recent bars for ``symbol`` with predicted upper/lower bounds.
@@ -52,13 +54,14 @@ def predicted_bounds(
     recent = features.tail(lookback).copy()
 
     day_path = Path(day_model_path) if day_model_path else config.DAY_MODEL_PATH
+    day_low_path = Path(day_low_model_path) if day_low_model_path else config.DAY_LOW_MODEL_PATH
     swing_path = Path(swing_model_path) if swing_model_path else config.SWING_MODEL_PATH
 
     try:
         if strategy_mode == DAY_MODE:
-            booster = load_model(day_path)
-            pred = predict(booster, recent[FEATURE_COLUMNS])
-            recent["pred_upper"], recent["pred_lower"] = day_bounds(pred)
+            high_pred = predict(load_model(day_path), recent[FEATURE_COLUMNS])
+            low_pred = predict(load_model(day_low_path), recent[FEATURE_COLUMNS])
+            recent["pred_upper"], recent["pred_lower"] = day_bounds(high_pred, low_pred)
         else:
             booster = load_model(swing_path)
             prob = predict(booster, recent[FEATURE_COLUMNS])

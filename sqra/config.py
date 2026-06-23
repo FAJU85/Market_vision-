@@ -20,7 +20,8 @@ DATA_DIR = Path(os.environ.get("SQRA_DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / "sqra_storage.db"
 
 # Serialized LightGBM cores.
-DAY_MODEL_PATH = DATA_DIR / "day_model.txt"
+DAY_MODEL_PATH = DATA_DIR / "day_model.txt"  # Core A upper (next-day high)
+DAY_LOW_MODEL_PATH = DATA_DIR / "day_low_model.txt"  # Core A lower (next-day low)
 SWING_MODEL_PATH = DATA_DIR / "swing_model.txt"
 
 # Prefix under which Hugging Face injects user-defined secrets.
