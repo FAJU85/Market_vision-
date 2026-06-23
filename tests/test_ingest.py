@@ -42,14 +42,16 @@ def test_cron_skips_non_trading_day(db_path, monkeypatch):
     """Done when: a holiday/weekend run exits without writing."""
     monkeypatch.setattr(db, "DB_PATH", db_path, raising=False)
     saturday = date(2024, 1, 6)
-    rows = backend_cron.run(today=saturday, provider=MockProvider(), symbols=["1120"])
-    assert rows == 0
+    summary = backend_cron.run(today=saturday, provider=MockProvider(), symbols=["1120"])
+    assert summary["rows"] == 0
+    assert summary["skipped"] is True
 
 
 def test_cron_ingests_on_trading_day(tmp_path, monkeypatch):
     target_db = tmp_path / "cron.db"
-    monkeypatch.setattr(backend_cron.db, "DB_PATH", target_db, raising=False)
     monkeypatch.setattr("sqra.config.DB_PATH", target_db, raising=False)
     sunday = date(2024, 1, 7)
-    rows = backend_cron.run(today=sunday, provider=MockProvider(), symbols=["1120", "2222"])
-    assert rows > 0
+    summary = backend_cron.run(
+        today=sunday, provider=MockProvider(), symbols=["1120", "2222"], train=False
+    )
+    assert summary["rows"] > 0

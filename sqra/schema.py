@@ -49,6 +49,17 @@ CREATE TABLE IF NOT EXISTS transaction_history (
     net_cash_impact DOUBLE
 );
 
+CREATE TABLE IF NOT EXISTS prediction_cache (
+    symbol        VARCHAR,
+    date          DATE,
+    strategy_mode VARCHAR,
+    pred_value    DOUBLE,
+    pred_upper    DOUBLE,
+    pred_lower    DOUBLE,
+    generated_at  TIMESTAMP,
+    PRIMARY KEY (symbol, date, strategy_mode)
+);
+
 CREATE INDEX IF NOT EXISTS idx_ticker_date ON saudi_stocks (symbol, date);
 """
 

@@ -18,6 +18,19 @@ from .models import load_model, predict
 DAY_MODE = "Day Trading Core"
 SWING_MODE = "Swing Trading Core"
 
+# Fallback band when no model artifact exists yet.
+FALLBACK_BAND = 0.02
+
+
+def day_bounds(prediction):
+    """Upper/lower bounds from the day core's next-high prediction."""
+    return prediction * 1.01, prediction * 0.99
+
+
+def swing_bounds(close, probability):
+    """Upper/lower bounds from the swing core's up-probability."""
+    return close * (1 + probability * 0.05), close * (1 - probability * 0.03)
+
 
 def predicted_bounds(
     conn,
@@ -45,18 +58,35 @@ def predicted_bounds(
         if strategy_mode == DAY_MODE:
             booster = load_model(day_path)
             pred = predict(booster, recent[FEATURE_COLUMNS])
-            recent["pred_upper"] = pred * 1.01
-            recent["pred_lower"] = pred * 0.99
+            recent["pred_upper"], recent["pred_lower"] = day_bounds(pred)
         else:
             booster = load_model(swing_path)
             prob = predict(booster, recent[FEATURE_COLUMNS])
-            recent["pred_upper"] = recent["close"] * (1 + prob * 0.05)
-            recent["pred_lower"] = recent["close"] * (1 - prob * 0.03)
+            recent["pred_upper"], recent["pred_lower"] = swing_bounds(recent["close"], prob)
     except Exception:  # noqa: BLE001 - the UI must render even before first training
-        recent["pred_upper"] = recent["close"] * 1.02
-        recent["pred_lower"] = recent["close"] * 0.98
+        recent["pred_upper"] = recent["close"] * (1 + FALLBACK_BAND)
+        recent["pred_lower"] = recent["close"] * (1 - FALLBACK_BAND)
 
     return recent
+
+
+def cached_bounds(conn, symbol: str, strategy_mode: str):
+    """Read pre-computed bounds for a symbol/mode from the prediction cache.
+
+    Returns a DataFrame (date, close, pred_upper, pred_lower) joined against the
+    price store, or an empty frame if the cache has no rows (C4: UI reads the
+    cache rather than running inference on a click).
+    """
+    return conn.execute(
+        """
+        SELECT p.date, s.close, p.pred_upper, p.pred_lower
+        FROM prediction_cache p
+        JOIN saudi_stocks s ON s.symbol = p.symbol AND s.date = p.date
+        WHERE p.symbol = ? AND p.strategy_mode = ?
+        ORDER BY p.date
+        """,
+        [symbol, strategy_mode],
+    ).df()
 
 
 def available_symbols(conn) -> list[str]:

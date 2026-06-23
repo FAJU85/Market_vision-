@@ -12,7 +12,13 @@ import gradio as gr
 import plotly.graph_objects as go
 
 from sqra import config, db
-from sqra.dashboard_data import DAY_MODE, SWING_MODE, available_symbols, predicted_bounds
+from sqra.dashboard_data import (
+    DAY_MODE,
+    SWING_MODE,
+    available_symbols,
+    cached_bounds,
+    predicted_bounds,
+)
 from sqra.kpis import max_drawdown, round_trip_pnls, sharpe_ratio, win_loss_ratio
 from sqra.schema import DEFAULT_STARTING_CASH
 from sqra.simulation import Transaction
@@ -50,7 +56,11 @@ def _kpi_block(conn, mode_key: str) -> str:
 
 def render_dashboard(symbol: str, strategy_mode: str):
     with db.read_only() as conn:
-        df = predicted_bounds(conn, symbol, strategy_mode)
+        # C4: read pre-computed predictions from the cache; fall back to live
+        # inference only if the nightly cache has not been populated yet.
+        df = cached_bounds(conn, symbol, strategy_mode)
+        if df.empty:
+            df = predicted_bounds(conn, symbol, strategy_mode)
         portfolio = _portfolio_frame(conn)
         mode_key = STRATEGY_KEYS.get(strategy_mode, "DAY_TRADING")
         kpis = _kpi_block(conn, mode_key)

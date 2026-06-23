@@ -7,7 +7,13 @@ import pytest
 from sqra import db
 from sqra.features import FEATURE_COLUMNS, build_features
 from sqra.ingest import MockProvider, ingest_market_data
-from sqra.models import load_model, predict, train_day_model, train_swing_model
+from sqra.models import (
+    load_model,
+    predict,
+    train_day_model,
+    train_swing_model,
+    train_swing_model_sweep,
+)
 
 
 @pytest.fixture()
@@ -64,4 +70,23 @@ def test_swing_model_trains_loads_and_predicts(features, tmp_path):
     reloaded = load_model(model_path)
     preds = predict(reloaded, features)
     # Binary objective -> probabilities in [0, 1].
+    assert ((preds >= 0) & (preds <= 1)).all()
+
+
+def test_day_model_incremental_finetune(features, tmp_path):
+    """Incremental training continues from an existing model (C4)."""
+    model_path = tmp_path / "day_model.txt"
+    base = train_day_model(features, num_boost_round=20, model_path=model_path)
+    tuned = train_day_model(
+        features, num_boost_round=10, model_path=model_path, init_model=model_path
+    )
+    # Continued boosting yields more trees than the base model.
+    assert tuned.num_trees() > base.num_trees()
+
+
+def test_swing_sweep_selects_a_model(features, tmp_path):
+    model_path = tmp_path / "swing_model.txt"
+    booster = train_swing_model_sweep(features, num_boost_round=20, model_path=model_path)
+    assert model_path.exists()
+    preds = predict(booster, features)
     assert ((preds >= 0) & (preds <= 1)).all()
