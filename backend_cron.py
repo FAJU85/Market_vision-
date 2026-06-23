@@ -13,6 +13,7 @@ import sys
 from datetime import date
 
 from sqra import db
+from sqra.cache import run_training_cycle
 from sqra.ingest import MarketDataProvider, MockProvider, ingest_market_data
 from sqra.trading_calendar import is_trading_day
 
@@ -26,12 +27,16 @@ def run(
     today: date | None = None,
     provider: MarketDataProvider | None = None,
     symbols: list[str] | None = None,
-) -> int:
-    """Execute one ingestion cycle. Returns rows written (0 if markets closed)."""
+    train: bool = True,
+) -> dict:
+    """Execute one post-market cycle: ingest, then (optionally) train + cache.
+
+    Returns a summary dict; ``rows`` is 0 when markets are closed.
+    """
     day = today or date.today()
     if not is_trading_day(day):
         print(f"[cron] {day} is not a Tadawul trading day; skipping.", file=sys.stderr)
-        return 0
+        return {"rows": 0, "skipped": True}
 
     db.initialize_with_recovery()  # F1: recover from a corrupt DB on startup
     market_provider = provider or MockProvider()
@@ -39,8 +44,11 @@ def run(
 
     with db.writable() as conn:
         rows = ingest_market_data(conn, market_provider, universe)
-    print(f"[cron] ingested {rows} bars for {len(universe)} symbols on {day}.")
-    return rows
+        summary = {"rows": rows, "skipped": False}
+        if train:
+            summary.update(run_training_cycle(conn, today=day))
+    print(f"[cron] ingested {rows} bars for {len(universe)} symbols on {day}: {summary}")
+    return summary
 
 
 if __name__ == "__main__":

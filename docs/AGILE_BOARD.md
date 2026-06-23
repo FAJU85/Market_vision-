@@ -104,7 +104,7 @@ Performance R/4, Documentation R/2.
 | C | C1 feature engineering (DuckDB SQL) | ✅ done |
 | C | C2 purged & embargoed CV | ✅ done |
 | C | C3 dual-core LightGBM models | ✅ done |
-| C | C4 training cadence + prediction cache | ☐ not started |
+| C | C4 training cadence + prediction cache | ✅ done |
 | D | D1 event-driven loop (next-day fill) | ✅ done |
 | D | D2 friction model | ✅ done |
 | D | D3 trailing stop-loss + audit log | ✅ done |
