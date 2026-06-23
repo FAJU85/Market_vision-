@@ -121,4 +121,4 @@ Performance R/4, Documentation R/2.
 |---|------|--------|
 | 1 | Live market-data provider (Yahoo) | ✅ done |
 | 2 | Core A low-bound model | ✅ done |
-| 3 | HF cron scheduling | ☐ next |
+| 3 | HF cron scheduling | ✅ done |

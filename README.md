@@ -79,6 +79,16 @@ By default the worker uses an offline `MockProvider`. Set `SQRA_LIVE_DATA=1` to
 fetch real adjusted EOD bars (Tadawul equities + `^TASI` + Brent) via Yahoo
 Finance; failures retry then fall back without crashing the cron.
 
+### Scheduling
+
+Hugging Face Spaces have no native cron. Run the bundled scheduler as a
+dedicated worker so it polls the clock and triggers the post-market cycle at
+16:00 AST on trading days (see [ADR-0005](docs/adr/0005-post-market-scheduling.md)):
+
+```bash
+python -m sqra.scheduler        # sole DB writer; keep separate from app.py
+```
+
 On Hugging Face Spaces, `app.py` is the entry point. The ingestion worker is
 scheduled for `00 16 * * 1-5` (16:00 AST, Sun–Thu trading days) — see
 [ADR-0003](docs/adr/0003-purged-embargoed-cv.md) for the modelling guardrails.
