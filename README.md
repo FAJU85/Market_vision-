@@ -75,6 +75,10 @@ python backend_cron.py        # ingest + train (writer); runs once
 python app.py                 # launch the dashboard (reader) on :7860
 ```
 
+By default the worker uses an offline `MockProvider`. Set `SQRA_LIVE_DATA=1` to
+fetch real adjusted EOD bars (Tadawul equities + `^TASI` + Brent) via Yahoo
+Finance; failures retry then fall back without crashing the cron.
+
 On Hugging Face Spaces, `app.py` is the entry point. The ingestion worker is
 scheduled for `00 16 * * 1-5` (16:00 AST, Sun–Thu trading days) — see
 [ADR-0003](docs/adr/0003-purged-embargoed-cv.md) for the modelling guardrails.

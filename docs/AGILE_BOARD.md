@@ -114,3 +114,11 @@ Performance R/4, Documentation R/2.
 | F | F1 startup integrity check + recovery | ✅ done |
 | F | F2 security gate (input validation) | ✅ done |
 | F | F3 README + ADRs + coverage | ✅ done |
+
+## Post-MVP backlog
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Live market-data provider (Yahoo) | ✅ done |
+| 2 | Core A low-bound model | ☐ next |
+| 3 | HF cron scheduling | ☐ |
