@@ -111,4 +111,6 @@ Performance R/4, Documentation R/2.
 | E | E1 Gradio layout + event wiring | ✅ done |
 | E | E2 Plotly bounds + portfolio view | ✅ done |
 | E | E3 KPI blocks (Sharpe/DD/Win) | ✅ done |
-| F | — | ☐ not started |
+| F | F1 startup integrity check + recovery | ✅ done |
+| F | F2 security gate (input validation) | ✅ done |
+| F | F3 README + ADRs + coverage | ✅ done |

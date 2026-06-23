@@ -33,7 +33,7 @@ def run(
         print(f"[cron] {day} is not a Tadawul trading day; skipping.", file=sys.stderr)
         return 0
 
-    db.initialize()
+    db.initialize_with_recovery()  # F1: recover from a corrupt DB on startup
     market_provider = provider or MockProvider()
     universe = symbols or DEFAULT_SYMBOLS
 
