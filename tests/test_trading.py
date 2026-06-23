@@ -57,14 +57,14 @@ def test_unknown_symbol_returns_no_data(conn):
 
 
 def test_injection_attempt_in_symbol_is_inert(conn):
-    # A malicious symbol must be treated as data, not SQL; no rows match it and
-    # the transaction_history table remains intact.
+    # A malicious symbol is rejected by input validation before any query, and
+    # the tables remain intact (defense in depth on top of parameterized SQL).
     evil = "1120'); DROP TABLE saudi_stocks;--"
     result = execute_trade(
         conn, strategy_mode="DAY_TRADING", symbol=evil, action="BUY",
         capital_allocation=10_000,
     )
-    assert result["status"] == "NO_DATA"
+    assert result["status"] == "INVALID_SYMBOL"
     # Table still exists and is queryable.
     assert conn.execute("SELECT COUNT(*) FROM saudi_stocks").fetchone()[0] == 1
 

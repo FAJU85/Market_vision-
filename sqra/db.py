@@ -15,6 +15,7 @@ merged back into the main database file (SRS §4.2).
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -41,6 +42,30 @@ def initialize(db_path: Path | str | None = None) -> Path:
     finally:
         conn.close()
     return path
+
+
+def initialize_with_recovery(db_path: Path | str | None = None) -> Path:
+    """Initialize the database, recovering from a corrupt file (F1, SRS §5.2).
+
+    On startup the schema is verified. If the file cannot be opened or fails the
+    integrity check, the corrupt file is moved aside (``*.corrupt``) and a fresh
+    schema is recreated, so the container always boots into a usable state.
+    """
+    path = Path(db_path) if db_path is not None else config.DB_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        return initialize(path)
+    except (duckdb.Error, RuntimeError) as exc:
+        if path.exists():
+            quarantine = path.with_suffix(path.suffix + ".corrupt")
+            quarantine.unlink(missing_ok=True)
+            path.rename(quarantine)
+            print(
+                f"[recovery] {path} was corrupt ({exc}); moved to {quarantine} "
+                f"and recreated empty schema.",
+                file=sys.stderr,
+            )
+        return initialize(path)
 
 
 @contextmanager

@@ -15,6 +15,7 @@ It deliberately corrects three defects in the original Blueprint ``app.py``:
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 
@@ -26,6 +27,14 @@ STRATEGY_KEYS = {
     "Day Trading Core": "DAY_TRADING",
     "Swing Trading Core": "SWING_TRADING",
 }
+
+# Tadawul symbols are numeric tickers; allow a small alphanumeric superset.
+_SYMBOL_RE = re.compile(r"^[A-Za-z0-9]{1,12}$")
+
+
+def is_valid_symbol(symbol: str) -> bool:
+    """Validate a ticker before it is used in any query (defense in depth)."""
+    return isinstance(symbol, str) and bool(_SYMBOL_RE.match(symbol))
 
 
 def _latest_price(conn: duckdb.DuckDBPyConnection, symbol: str) -> float | None:
@@ -55,6 +64,12 @@ def execute_trade(
         raise ValueError(f"Unknown strategy_mode: {strategy_mode!r}")
     if action not in ("BUY", "SELL"):
         raise ValueError(f"Unknown action: {action!r}")
+    if not is_valid_symbol(symbol):
+        return {"status": "INVALID_SYMBOL", "symbol": symbol}
+    if action == "BUY" and capital_allocation <= 0:
+        return {"status": "INVALID_CAPITAL", "symbol": symbol}
+    if sell_shares is not None and sell_shares <= 0:
+        return {"status": "INVALID_QUANTITY", "symbol": symbol}
 
     row = conn.execute(
         "SELECT cash_balance, shares_held, avg_purchase_price "
