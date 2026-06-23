@@ -98,4 +98,11 @@ Performance R/4, Documentation R/2.
 | A | A1 schema + init | ✅ done |
 | A | A2 connection discipline | ✅ done |
 | A | A3 HF scaffold + secrets | ✅ done |
-| B–F | — | ☐ not started |
+| B | B1 EOD ingestion (provider + upsert) | ✅ done |
+| B | B2 holiday-aware cron guard | ✅ done |
+| B | B3 outlier defense | ✅ done |
+| C | C1 feature engineering (DuckDB SQL) | ✅ done |
+| C | C2 purged & embargoed CV | ✅ done |
+| C | C3 dual-core LightGBM models | ✅ done |
+| C | C4 training cadence + prediction cache | ☐ not started |
+| D–F | — | ☐ not started |
