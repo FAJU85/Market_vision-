@@ -108,4 +108,7 @@ Performance R/4, Documentation R/2.
 | D | D1 event-driven loop (next-day fill) | ✅ done |
 | D | D2 friction model | ✅ done |
 | D | D3 trailing stop-loss + audit log | ✅ done |
-| E–F | — | ☐ not started |
+| E | E1 Gradio layout + event wiring | ✅ done |
+| E | E2 Plotly bounds + portfolio view | ✅ done |
+| E | E3 KPI blocks (Sharpe/DD/Win) | ✅ done |
+| F | — | ☐ not started |
